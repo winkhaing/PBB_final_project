@@ -1,0 +1,14 @@
+quarto
+pytinytex
+ipykernel
+kaleido
+itables
+pandas
+numpy
+pyyaml
+openpyxl
+quarto-cli
+openai
+scikit-learn
+country_converter
+plotly==5.24.0
