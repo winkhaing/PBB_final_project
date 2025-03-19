@@ -1,7 +1,8 @@
 ---
-title: "GAPMINDER | ASEAN Healthcare Indicators"
+title: "**GAPMINDER | ASEAN Healthcare Indicators**"
 subtitle: "Analysis of Health Expenditure and Infant Mortality Rates (1995-2010)"
-format: dashboard
+format: 
+    dashboard
 execute: 
     echo: false
 ---
@@ -218,7 +219,7 @@ health_bar = px.bar(
     x="country",
     y=["1995_health", "2010_health"],
     barmode="group",
-    title="Health Spending (% of GDP): 1995 vs 2010",
+    #title="Health Spending (% of GDP): 1995 vs 2010",
     labels={"value": "Health Spending (% of GDP)", "variable": "Year"},
     color_discrete_sequence=["#3182bd", "#9ecae1"],
     text_auto=".2f",
@@ -231,13 +232,17 @@ health_bar.update_layout(
     xaxis={"categoryorder": "total descending"},
 )
 health_bar.update_traces(textposition="outside")
+# Update legend labels explicitly
+health_bar.for_each_trace(
+    lambda t: t.update(name=t.name.split("_")[0])
+)
 
 mortality_bar = px.bar(
     merged_1995_2010,
     x="country",
     y=["1995_mortality", "2010_mortality"],
     barmode="group",
-    title="Infant Mortality Rate: 1995 vs 2010",
+    #title="Infant Mortality Rate: 1995 vs 2010",
     labels={"value": "Infant Mortality Rate", "variable": "Year"},
     color_discrete_sequence=["#cb181d", "#fb6a4a"],
     text_auto=".1f",
@@ -250,6 +255,10 @@ mortality_bar.update_layout(
     xaxis={"categoryorder": "total descending"},
 )
 mortality_bar.update_traces(textposition="outside")
+# Update legend labels explicitly
+mortality_bar.for_each_trace(
+    lambda t: t.update(name=t.name.split("_")[0])
+)
 
 # Create time series plots with improved styling
 health_time_series = px.line(
@@ -257,7 +266,7 @@ health_time_series = px.line(
     x="year",
     y="health_spending",
     color="country",
-    title="Health Spending (% of GDP) Over Time (1995-2010)",
+    #title="Health Spending (% of GDP) Over Time (1995-2010)",
     labels={"health_spending": "Health Spending (% of GDP)", "year": "Year"},
     markers=True,
     line_shape="spline",
@@ -268,6 +277,12 @@ health_time_series.update_layout(
     plot_bgcolor="rgba(0,0,0,0)",
     legend_title_text="Country",
     hovermode="x unified",
+    )
+# Update just the x-axis tick labels
+health_time_series.update_xaxes(
+    tickmode='array',
+    tickvals=list(range(1995, 2011)),
+    ticktext=[str(year) for year in range(1995, 2011)]
 )
 health_time_series.update_traces(line=dict(width=2.5), marker=dict(size=6))
 
@@ -276,7 +291,7 @@ mortality_time_series = px.line(
     x="year",
     y="infant_mortality",
     color="country",
-    title="Infant Mortality Rate Over Time (1995-2010)",
+    #title="Infant Mortality Rate Over Time (1995-2010)",
     labels={"infant_mortality": "Infant Mortality Rate", "year": "Year"},
     markers=True,
     line_shape="spline",
@@ -287,6 +302,12 @@ mortality_time_series.update_layout(
     plot_bgcolor="rgba(0,0,0,0)",
     legend_title_text="Country",
     hovermode="x unified",
+)
+# Update just the x-axis tick labels
+mortality_time_series.update_xaxes(
+    tickmode='array',
+    tickvals=list(range(1995, 2011)),
+    ticktext=[str(year) for year in range(1995, 2011)]
 )
 mortality_time_series.update_traces(line=dict(width=2.5), marker=dict(size=6))
 
@@ -484,14 +505,14 @@ health_change_bar = px.bar(
     merged_1995_2010.sort_values("health_change_pct"),
     x="country",
     y="health_change_pct",
-    title="Percentage Change in Health Spending (1995-2010)",
+    #title="Percentage Change in Health Spending (1995-2010)",
     labels={"health_change_pct": "Change (%)", "country": "Country"},
     color="health_change_pct",
     color_continuous_scale="RdBu",
     text_auto=".1f",
 )
 health_change_bar.update_traces(
-    texttemplate="%{text}%",
+    texttemplate="%{y:.1f}%",
     textposition="outside",
     marker_line_width=1,
     marker_line_color="rgb(50, 50, 50)",
@@ -516,14 +537,14 @@ mortality_change_bar = px.bar(
     merged_1995_2010.sort_values("mortality_change_pct"),
     x="country",
     y="mortality_change_pct",
-    title="Percentage Change in Infant Mortality (1995-2010)",
+    #title="Percentage Change in Infant Mortality (1995-2010)",
     labels={"mortality_change_pct": "Change (%)", "country": "Country"},
     color="mortality_change_pct",
     color_continuous_scale="RdBu_r",
     text_auto=".1f",
 )
 mortality_change_bar.update_traces(
-    texttemplate="%{text}%",
+    texttemplate="%{y:.1f}%",
     textposition="outside",
     marker_line_width=1,
     marker_line_color="rgb(50, 50, 50)",
@@ -568,14 +589,6 @@ animated_scatter.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] =
 animated_scatter.layout.updatemenus[0].buttons[0].args[1]["transition"][
     "duration"
 ] = 300
-
-# Show visible x-axis and y-axis lines
-animated_scatter.update_xaxes(
-    showline=True, linewidth=1, linecolor="black", mirror=True
-)
-animated_scatter.update_yaxes(
-    showline=True, linewidth=1, linecolor="black", mirror=True
-)
 
 # Update layout
 animated_scatter.update_layout(
@@ -675,6 +688,31 @@ comparison_table["Efficiency Improvement (%)"] = (
 # Sort the table by efficiency improvement
 comparison_table_sorted = comparison_table.sort_values(
     "Efficiency Improvement (%)", ascending=False
+).reset_index(drop=True)
+
+# Create bar chart to visualize healthcare efficiency improvement
+efficiency_fig = px.bar(
+    comparison_table_sorted,
+    x='Country',
+    y='Efficiency Improvement (%)',
+    #title='Healthcare Efficiency Improvement (1995-2010)',
+    text_auto='.1f',
+    color='Efficiency Improvement (%)',
+    color_continuous_scale='Viridis'
+)
+
+efficiency_fig.update_traces(
+    texttemplate='%{y:.1f}%',
+    textposition='outside',
+    marker_line_width=1,
+    marker_line_color='rgb(50, 50, 50)'
+)
+
+efficiency_fig.update_layout(
+    xaxis_title='Country',
+    yaxis_title='Efficiency Improvement (%)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    coloraxis_showscale=False
 )
 
 # End-of-code
@@ -682,27 +720,27 @@ comparison_table_sorted = comparison_table.sort_values(
 
 ```
 
-# HOME
+# Home
 
 ## Row 1 {height=20%}
 
 ::: {.valuebox icon="heart" color="#4682B4" title="Health Spending in ASEAN (1995)"}
-<span style="font-size: 1.5rem;">`{python} f"{avg_health_1995:.2f}%"`
+<span style="font-size: 1.2rem;">`{python} f"{avg_health_1995:.2f}%"`
 Average % of GDP
 :::
 
 ::: {.valuebox icon="heart" color="#6CA6CD" title="Health Spending in ASEAN (2010)"}
-<span style="font-size: 1.5rem;">`{python} f"{avg_health_2010:.2f}%"`
+<span style="font-size: 1.2rem;">`{python} f"{avg_health_2010:.2f}%"`
 Average % of GDP
 :::
 
 ::: {.valuebox icon="activity" color="#B22222" title="Infant Mortality in ASEAN (1995)"}
-<span style="font-size: 1.5rem;">`{python} f"{avg_mortality_1995:.1f}"`
+<span style="font-size: 1.2rem;">`{python} f"{avg_mortality_1995:.1f}"`
 Per 1,000 live births
 :::
 
 ::: {.valuebox icon="activity" color="#CD5C5C" title="Infant Mortality in ASEAN (2010)"}
-<span style="font-size: 1.5rem;">`{python} f"{avg_mortality_2010:.1f}"`
+<span style="font-size: 1.2rem;">`{python} f"{avg_mortality_2010:.1f}"`
 Per 1,000 live births
 :::
 
@@ -732,176 +770,110 @@ The relationship between health spending and infant mortality in ASEAN countries
 
 2. **Progress**: All ASEAN countries showed improvements in infant mortality rates between 1995 and 2010, regardless of changes in health spending.
 
-3. **Outliers**: 
-   - Cambodia had high health spending but also high infant mortality in 1995, suggesting inefficiencies in healthcare delivery.
-   - Singapore consistently maintained both high health spending and very low infant mortality.
+3. **Outliers**:
+    - Cambodia had high health spending but also high infant mortality in 1995, suggesting inefficiencies in healthcare delivery
+    - Singapore consistently maintained both high health spending and very low infant mortality
 
 4. **Diverse Approaches**: The data reveals different national strategies - some countries increased health spending significantly (Malaysia, Vietnam), while others maintained or slightly reduced spending while still improving outcomes.
 
-# HEALTH SPENDING
+# Health Spending
 
-## Row 1 {height=25%}
+## Row 1 {height=20%}
 
 ::: {.valuebox icon="graph-up" color="#4169E1" title="Highest Health Spending (1995)"}
-`{python} f"{max_health_1995['1995_health']:.2f}%"`
+<span style="font-size: 1.2rem;">`{python} f"{max_health_1995['1995_health']:.2f}%"`
 `{python} max_health_1995['country']`
 :::
 
 ::: {.valuebox icon="graph-up" color="#4169E1" title="Highest Health Spending (2010)"}
-`{python} f"{max_health_2010['2010_health']:.2f}%"`
+<span style="font-size: 1.2rem;">`{python} f"{max_health_2010['2010_health']:.2f}%"`
 `{python} max_health_2010['country']`
 :::
 
 ::: {.valuebox icon="graph-down" color="#4682B4" title="Lowest Health Spending (1995)"}
-`{python} f"{min_health_1995['1995_health']:.2f}%"`
+<span style="font-size: 1.2rem;">`{python} f"{min_health_1995['1995_health']:.2f}%"`
 `{python} min_health_1995['country']`
 :::
 
 ::: {.valuebox icon="graph-down" color="#4682B4" title="Lowest Health Spending (2010)"}
-`{python} f"{min_health_2010['2010_health']:.2f}%"`
+<span style="font-size: 1.2rem;">`{python} f"{min_health_2010['2010_health']:.2f}%"`
 `{python} min_health_2010['country']`
 :::
 
-## Row 2 {height=35%}
-
-### Health Spending Maps {.tabset}
-
-#### 1995
+## Row 2 {height=40%}
 ```{python}
-health_map_1995
-```
-
-#### 2010
-```{python}
-health_map_2010
-```
-
-### Health Spending Bar Chart Comparison
-```{python}
-health_bar
-```
-
-## Row 3 {height=40%}
-
-### Health Spending Over Time
-```{python}
+# | title: Health Spending (% of GDP) Over Time (1995-2010)
 health_time_series
 ```
 
-### Health Spending % Change (1995-2010)
+## Row 3 {height=40%}
 ```{python}
+# | title: Health Spending (%GDP) 1995 vs 2010
+health_bar
+```
+```{python}
+# | title: Percent change in Health Spending (%GDP) in ASEAN Countries (1995-2010)
 health_change_bar
 ```
 
-# INFANT MORTALITY
+# Infant Mortality
 
-## Row 1 {height=25%}
+## Row 1 {height=20%}
 
 ::: {.valuebox icon="heart-pulse" color="#B22222" title="Highest Mortality (1995)"}
-`{python} f"{max_mortality_1995['1995_mortality']:.1f}"`
+<span style="font-size: 1.2rem;">`{python} f"{max_mortality_1995['1995_mortality']:.1f}"`
 `{python} max_mortality_1995['country']`
 :::
 
 ::: {.valuebox icon="heart-pulse" color="#B22222" title="Highest Mortality (2010)"}
-`{python} f"{max_mortality_2010['2010_mortality']:.1f}"`
+<span style="font-size: 1.2rem;">`{python} f"{max_mortality_2010['2010_mortality']:.1f}"`
 `{python} max_mortality_2010['country']`
 :::
 
 ::: {.valuebox icon="heart" color="#CD5C5C" title="Lowest Mortality (1995)"}
-`{python} f"{min_mortality_1995['1995_mortality']:.1f}"`
+<span style="font-size: 1.2rem;">`{python} f"{min_mortality_1995['1995_mortality']:.1f}"`
 `{python} min_mortality_1995['country']`
 :::
 
 ::: {.valuebox icon="heart" color="#CD5C5C" title="Lowest Mortality (2010)"}
-`{python} f"{min_mortality_2010['2010_mortality']:.1f}"`
+<span style="font-size: 1.2rem;">`{python} f"{min_mortality_2010['2010_mortality']:.1f}"`
 `{python} min_mortality_2010['country']`
 :::
 
-## Row 2 {height=35%}
+## Row 2 {height=40%}
 
-### Infant Mortality Maps {.tabset}
-
-#### 1995
 ```{python}
-mortality_map_1995
-```
-
-#### 2010
-```{python}
-mortality_map_2010
-```
-
-### Infant Mortality Bar Chart Comparison
-```{python}
-mortality_bar
+# | title: Infant Mortality Over Time (1995-2010)
+mortality_time_series
 ```
 
 ## Row 3 {height=40%}
 
-### Infant Mortality Over Time
 ```{python}
-mortality_time_series
+# | title: Infant Mortality 1995 vs 2010
+mortality_bar
 ```
-
-### Infant Mortality % Change (1995-2010)
 ```{python}
+# | title: Percent change in Infant Mortality in ASEAN Countries (1995-2010)
 mortality_change_bar
 ```
 
-# RELATIONSHIP
+# Efficiency
 
-## Row 1 {height=35%}
-
-### Relationship Between Health Spending and Infant Mortality {.tabset}
-
-#### 1995
+## Row 1 {height=40%}
 ```{python}
-scatter_1995
-```
-
-#### 2010
-```{python}
-scatter_2010
-```
-
-## Row 2 {height=30%}
-
-### ASEAN Healthcare Efficiency Analysis
-```{python}
-# Create bar chart to visualize healthcare efficiency improvement
-efficiency_fig = px.bar(
-    comparison_table_sorted,
-    x='Country',
-    y='Efficiency Improvement (%)',
-    title='Healthcare Efficiency Improvement (1995-2010)',
-    text_auto='.1f',
-    color='Efficiency Improvement (%)',
-    color_continuous_scale='Viridis'
-)
-
-efficiency_fig.update_traces(
-    texttemplate='%{text}%',
-    textposition='outside',
-    marker_line_width=1,
-    marker_line_color='rgb(50, 50, 50)'
-)
-
-efficiency_fig.update_layout(
-    xaxis_title='Country',
-    yaxis_title='Efficiency Improvement (%)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    coloraxis_showscale=False
-)
-
+# | title: Healthcare Efficiency Analysis in ASEAN Countries (1995-2010)
 efficiency_fig
 ```
 
-### Healthcare Indicators Comparison
+## Row 2 {height=35%}
+
 ```{python}
-comparison_table_sorted
+# | title: Healthcare Indicators Comparison
+comparison_table_sorted.style.format(precision=2).hide(axis='index')
 ```
 
-## Row 3 {height=35%}
+## Row 3 {height=25%}
 
 ### Key Insights
 
@@ -931,19 +903,32 @@ The relationship between health spending and infant mortality in ASEAN countries
    - In 2010: highest (Myanmar: 48.5) vs lowest (Singapore: 2.2) - a difference of 46.3
    - Indicates overall regional progress toward better healthcare outcomes
 
-# DATA DOWNLOAD
+# Data
 
-## Row 1
+## Row 1 {height=66%}
 
 ### ASEAN Health and Mortality Data (1995-2010)
 ```{python}
 # Display the full dataset with download button (if using Quarto)
-time_series[['country', 'year', 'health_spending', 'infant_mortality']]
+(time_series[['country', 'year', 'health_spending', 'infant_mortality']]
+    .rename(columns={
+        'country': 'Country',
+        'year': 'Year',
+        'health_spending': 'Health Spending (% GDP)',
+        'infant_mortality': 'Infant Mortality (per 1000 Live Birth)'
+    })
+    .sort_values(by=['Country', 'Year'])
+    .style.hide(axis='index')
+    .format(precision=2)
+    .set_properties(**{'text-align': 'left'}, subset=['Year', 'Health Spending (% GDP)', 'Infant Mortality (per 1000 Live Birth)']))
+
 ```
 
-## Row 2
+## Row 2 {height=34%}
 
 ### About This Dashboard
+
+![](gapminder.png) Learn more about the Gapminder dataset at <https://www.gapminder.org/data/documentation/>
 
 This dashboard presents an analysis of healthcare indicators across ASEAN countries from 1995 to 2010, focusing on two key metrics:
 
@@ -955,8 +940,8 @@ The data is sourced from Gapminder's global development indicators database, whi
 
 This analysis covers 8 of the 10 ASEAN countries (Brunei Darussalam and Lao PDR were not included due to data limitations) and examines both the absolute values and the changes over the 15-year period.
 
-The dashboard is designed to highlight:
-- Regional trends in health spending and outcomes
-- Country-specific progress and challenges
-- The relationship between financial investment and health outcomes
-- Patterns of healthcare development across Southeast Asia
+The dashboard is designed to **highlight**:
+    - Regional trends in health spending and outcomes
+    - ASEAN Countries-specific progress and challenges
+    - The relationship between financial investment and health outcomes
+    - Patterns of healthcare development across Southeast Asia
