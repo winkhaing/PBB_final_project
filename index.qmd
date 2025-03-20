@@ -1,8 +1,10 @@
 ---
 title: "**GAPMINDER | ASEAN Healthcare Indicators**"
 subtitle: "Analysis of Health Expenditure and Infant Mortality Rates (1995-2010)"
+Author: "Win Khaing"
 format: 
-    dashboard
+    dashboard:
+      theme: styles.scss
 execute: 
     echo: false
 ---
@@ -219,7 +221,7 @@ health_bar = px.bar(
     x="country",
     y=["1995_health", "2010_health"],
     barmode="group",
-    #title="Health Spending (% of GDP): 1995 vs 2010",
+    # title="Health Spending (% of GDP): 1995 vs 2010",
     labels={"value": "Health Spending (% of GDP)", "variable": "Year"},
     color_discrete_sequence=["#3182bd", "#9ecae1"],
     text_auto=".2f",
@@ -233,16 +235,14 @@ health_bar.update_layout(
 )
 health_bar.update_traces(textposition="outside")
 # Update legend labels explicitly
-health_bar.for_each_trace(
-    lambda t: t.update(name=t.name.split("_")[0])
-)
+health_bar.for_each_trace(lambda t: t.update(name=t.name.split("_")[0]))
 
 mortality_bar = px.bar(
     merged_1995_2010,
     x="country",
     y=["1995_mortality", "2010_mortality"],
     barmode="group",
-    #title="Infant Mortality Rate: 1995 vs 2010",
+    # title="Infant Mortality Rate: 1995 vs 2010",
     labels={"value": "Infant Mortality Rate", "variable": "Year"},
     color_discrete_sequence=["#cb181d", "#fb6a4a"],
     text_auto=".1f",
@@ -256,9 +256,7 @@ mortality_bar.update_layout(
 )
 mortality_bar.update_traces(textposition="outside")
 # Update legend labels explicitly
-mortality_bar.for_each_trace(
-    lambda t: t.update(name=t.name.split("_")[0])
-)
+mortality_bar.for_each_trace(lambda t: t.update(name=t.name.split("_")[0]))
 
 # Create time series plots with improved styling
 health_time_series = px.line(
@@ -266,7 +264,7 @@ health_time_series = px.line(
     x="year",
     y="health_spending",
     color="country",
-    #title="Health Spending (% of GDP) Over Time (1995-2010)",
+    # title="Health Spending (% of GDP) Over Time (1995-2010)",
     labels={"health_spending": "Health Spending (% of GDP)", "year": "Year"},
     markers=True,
     line_shape="spline",
@@ -277,12 +275,12 @@ health_time_series.update_layout(
     plot_bgcolor="rgba(0,0,0,0)",
     legend_title_text="Country",
     hovermode="x unified",
-    )
+)
 # Update just the x-axis tick labels
 health_time_series.update_xaxes(
-    tickmode='array',
+    tickmode="array",
     tickvals=list(range(1995, 2011)),
-    ticktext=[str(year) for year in range(1995, 2011)]
+    ticktext=[str(year) for year in range(1995, 2011)],
 )
 health_time_series.update_traces(line=dict(width=2.5), marker=dict(size=6))
 
@@ -291,7 +289,7 @@ mortality_time_series = px.line(
     x="year",
     y="infant_mortality",
     color="country",
-    #title="Infant Mortality Rate Over Time (1995-2010)",
+    # title="Infant Mortality Rate Over Time (1995-2010)",
     labels={"infant_mortality": "Infant Mortality Rate", "year": "Year"},
     markers=True,
     line_shape="spline",
@@ -305,9 +303,9 @@ mortality_time_series.update_layout(
 )
 # Update just the x-axis tick labels
 mortality_time_series.update_xaxes(
-    tickmode='array',
+    tickmode="array",
     tickvals=list(range(1995, 2011)),
-    ticktext=[str(year) for year in range(1995, 2011)]
+    ticktext=[str(year) for year in range(1995, 2011)],
 )
 mortality_time_series.update_traces(line=dict(width=2.5), marker=dict(size=6))
 
@@ -505,7 +503,7 @@ health_change_bar = px.bar(
     merged_1995_2010.sort_values("health_change_pct"),
     x="country",
     y="health_change_pct",
-    #title="Percentage Change in Health Spending (1995-2010)",
+    # title="Percentage Change in Health Spending (1995-2010)",
     labels={"health_change_pct": "Change (%)", "country": "Country"},
     color="health_change_pct",
     color_continuous_scale="RdBu",
@@ -537,7 +535,7 @@ mortality_change_bar = px.bar(
     merged_1995_2010.sort_values("mortality_change_pct"),
     x="country",
     y="mortality_change_pct",
-    #title="Percentage Change in Infant Mortality (1995-2010)",
+    # title="Percentage Change in Infant Mortality (1995-2010)",
     labels={"mortality_change_pct": "Change (%)", "country": "Country"},
     color="mortality_change_pct",
     color_continuous_scale="RdBu_r",
@@ -693,26 +691,26 @@ comparison_table_sorted = comparison_table.sort_values(
 # Create bar chart to visualize healthcare efficiency improvement
 efficiency_fig = px.bar(
     comparison_table_sorted,
-    x='Country',
-    y='Efficiency Improvement (%)',
-    #title='Healthcare Efficiency Improvement (1995-2010)',
-    text_auto='.1f',
-    color='Efficiency Improvement (%)',
-    color_continuous_scale='Viridis'
+    x="Country",
+    y="Efficiency Improvement (%)",
+    # title='Healthcare Efficiency Improvement (1995-2010)',
+    text_auto=".1f",
+    color="Efficiency Improvement (%)",
+    color_continuous_scale="Viridis",
 )
 
 efficiency_fig.update_traces(
-    texttemplate='%{y:.1f}%',
-    textposition='outside',
+    texttemplate="%{y:.1f}%",
+    textposition="outside",
     marker_line_width=1,
-    marker_line_color='rgb(50, 50, 50)'
+    marker_line_color="rgb(50, 50, 50)",
 )
 
 efficiency_fig.update_layout(
-    xaxis_title='Country',
-    yaxis_title='Efficiency Improvement (%)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    coloraxis_showscale=False
+    xaxis_title="Country",
+    yaxis_title="Efficiency Improvement (%)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    coloraxis_showscale=False,
 )
 
 # End-of-code
@@ -724,22 +722,22 @@ efficiency_fig.update_layout(
 
 ## Row 1 {height=20%}
 
-::: {.valuebox icon="heart" color="#4682B4" title="Health Spending in ASEAN (1995)"}
+::: {.valuebox icon="cash-coin" color="#4682B4" title="Health Spending in ASEAN (1995)"}
 <span style="font-size: 1.2rem;">`{python} f"{avg_health_1995:.2f}%"`
 Average % of GDP
 :::
 
-::: {.valuebox icon="heart" color="#6CA6CD" title="Health Spending in ASEAN (2010)"}
+::: {.valuebox icon="cash-coin" color="#6CA6CD" title="Health Spending in ASEAN (2010)"}
 <span style="font-size: 1.2rem;">`{python} f"{avg_health_2010:.2f}%"`
 Average % of GDP
 :::
 
-::: {.valuebox icon="activity" color="#B22222" title="Infant Mortality in ASEAN (1995)"}
+::: {.valuebox icon="person-circle" color="#B22222" title="Infant Mortality in ASEAN (1995)"}
 <span style="font-size: 1.2rem;">`{python} f"{avg_mortality_1995:.1f}"`
 Per 1,000 live births
 :::
 
-::: {.valuebox icon="activity" color="#CD5C5C" title="Infant Mortality in ASEAN (2010)"}
+::: {.valuebox icon="person-circle" color="#CD5C5C" title="Infant Mortality in ASEAN (2010)"}
 <span style="font-size: 1.2rem;">`{python} f"{avg_mortality_2010:.1f}"`
 Per 1,000 live births
 :::
@@ -780,22 +778,22 @@ The relationship between health spending and infant mortality in ASEAN countries
 
 ## Row 1 {height=20%}
 
-::: {.valuebox icon="graph-up" color="#4169E1" title="Highest Health Spending (1995)"}
+::: {.valuebox icon="arrow-up-right-circle" color="#4169E1" title="Highest Health Spending (1995)"}
 <span style="font-size: 1.2rem;">`{python} f"{max_health_1995['1995_health']:.2f}%"`
 `{python} max_health_1995['country']`
 :::
 
-::: {.valuebox icon="graph-up" color="#4169E1" title="Highest Health Spending (2010)"}
+::: {.valuebox icon="arrow-up-right-circle" color="#4169E1" title="Highest Health Spending (2010)"}
 <span style="font-size: 1.2rem;">`{python} f"{max_health_2010['2010_health']:.2f}%"`
 `{python} max_health_2010['country']`
 :::
 
-::: {.valuebox icon="graph-down" color="#4682B4" title="Lowest Health Spending (1995)"}
+::: {.valuebox icon="arrow-down-right-circle" color="#4682B4" title="Lowest Health Spending (1995)"}
 <span style="font-size: 1.2rem;">`{python} f"{min_health_1995['1995_health']:.2f}%"`
 `{python} min_health_1995['country']`
 :::
 
-::: {.valuebox icon="graph-down" color="#4682B4" title="Lowest Health Spending (2010)"}
+::: {.valuebox icon="arrow-down-right-circle" color="#4682B4" title="Lowest Health Spending (2010)"}
 <span style="font-size: 1.2rem;">`{python} f"{min_health_2010['2010_health']:.2f}%"`
 `{python} min_health_2010['country']`
 :::
@@ -820,22 +818,22 @@ health_change_bar
 
 ## Row 1 {height=20%}
 
-::: {.valuebox icon="heart-pulse" color="#B22222" title="Highest Mortality (1995)"}
+::: {.valuebox icon="graph-up-arrow" color="#B22222" title="Highest Mortality (1995)"}
 <span style="font-size: 1.2rem;">`{python} f"{max_mortality_1995['1995_mortality']:.1f}"`
 `{python} max_mortality_1995['country']`
 :::
 
-::: {.valuebox icon="heart-pulse" color="#B22222" title="Highest Mortality (2010)"}
+::: {.valuebox icon="graph-up-arrow" color="#B22222" title="Highest Mortality (2010)"}
 <span style="font-size: 1.2rem;">`{python} f"{max_mortality_2010['2010_mortality']:.1f}"`
 `{python} max_mortality_2010['country']`
 :::
 
-::: {.valuebox icon="heart" color="#CD5C5C" title="Lowest Mortality (1995)"}
+::: {.valuebox icon="graph-down-arrow" color="#CD5C5C" title="Lowest Mortality (1995)"}
 <span style="font-size: 1.2rem;">`{python} f"{min_mortality_1995['1995_mortality']:.1f}"`
 `{python} min_mortality_1995['country']`
 :::
 
-::: {.valuebox icon="heart" color="#CD5C5C" title="Lowest Mortality (2010)"}
+::: {.valuebox icon="graph-down-arrow" color="#CD5C5C" title="Lowest Mortality (2010)"}
 <span style="font-size: 1.2rem;">`{python} f"{min_mortality_2010['2010_mortality']:.1f}"`
 `{python} min_mortality_2010['country']`
 :::

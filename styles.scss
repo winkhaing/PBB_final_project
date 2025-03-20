@@ -1,0 +1,26 @@
+/*-- scss:defaults --*/
+
+
+/*-- Define colors for later use --*/
+
+
+/*-- scss:rules --*/
+.quarto-dashboard .card-header {
+    background-color: #569191;
+}
+
+.quarto-dashboard .card-header .card-title {
+    font-weight: bold;
+    color: aliceblue;
+}
+
+.bslib-value-box .value-box-area * {
+    color: white;
+}
+
+.bslib-value-box.showcase-left-center:not([data-fill-screen=true]) .value-box-grid .value-box-showcase {
+    color: antiquewhite;
+}
+
+
+/*-- scss:functions --*/
