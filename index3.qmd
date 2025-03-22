@@ -1,0 +1,972 @@
+---
+title: "**GAPMINDER | ASEAN Healthcare Indicators**"
+subtitle: "Analysis of Health Expenditure and Infant Mortality Rates (1995-2010)"
+Author: "Win Khaing"
+format: 
+    dashboard:
+      theme: styles.scss
+      viewerDelay: 200
+      figWidth: "90%"
+      figHeight: "auto"
+      panelResize: true
+execute: 
+    echo: false
+    warning: false
+    error: false
+---
+
+
+```{python}
+# | eval: true
+# | output: false
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import country_converter as coco
+
+# Define helper functions for better modularity
+def load_and_filter_data(file_paths, countries):
+    """Load data files and filter for specified countries"""
+    health_spending = pd.read_csv(file_paths['health'])
+    infant_mortality = pd.read_csv(file_paths['mortality'])
+    
+    # Filter for countries of interest
+    health_asean = health_spending[health_spending["country"].isin(countries)]
+    mortality_asean = infant_mortality[infant_mortality["country"].isin(countries)]
+    
+    return health_asean, mortality_asean
+
+def prepare_time_series_data(health_data, mortality_data, countries, year_range):
+    """Reshape data for time series analysis"""
+    years = [str(year) for year in year_range]
+    
+    # Health spending time series
+    health_time = health_data[["country"] + years].melt(
+        id_vars=["country"], value_vars=years, var_name="year", value_name="health_spending"
+    )
+    health_time["year"] = health_time["year"].astype(int)
+    
+    # Infant mortality time series
+    mortality_time = mortality_data[["country"] + years].melt(
+        id_vars=["country"], value_vars=years, var_name="year", value_name="infant_mortality"
+    )
+    mortality_time["year"] = mortality_time["year"].astype(int)
+    
+    # Merge time series data
+    time_series = pd.merge(health_time, mortality_time, on=["country", "year"])
+    
+    # Add ISO codes for mapping
+    iso_map = coco.convert(names=countries, to="ISO3")
+    country_iso = dict(zip(countries, iso_map))
+    time_series["iso_alpha"] = time_series["country"].map(country_iso)
+    
+    return time_series, country_iso
+
+def create_choropleth_map(data, location_col, color_col, title, color_scale, hover_name="country"):
+    """Create a standard choropleth map focused on ASEAN region"""
+    # Define ASEAN region boundaries
+    asean_bounds = {"lat_min": -10, "lat_max": 28, "lon_min": 92, "lon_max": 141}
+    
+    map_fig = px.choropleth(
+        data,
+        locations=location_col,
+        color=color_col,
+        hover_name=hover_name,
+        color_continuous_scale=color_scale,
+        scope="asia",
+    )
+    
+    map_fig.update_layout(
+        coloraxis_showscale=True,
+        geo=dict(
+            projection_scale=1,
+            center=dict(lat=8, lon=115),
+            visible=True,
+            showland=True,
+            landcolor="lightgray",
+            showcountries=True,
+            countrycolor="gray",
+            lataxis=dict(range=[asean_bounds["lat_min"], asean_bounds["lat_max"]]),
+            lonaxis=dict(range=[asean_bounds["lon_min"], asean_bounds["lon_max"]]),
+        ),
+        # Add rendering fixes
+        autosize=True,
+        height=450,
+        margin=dict(l=30, r=30, t=50, b=30),
+        paper_bgcolor="white",
+    )
+    
+    return map_fig
+
+def create_animated_map(time_data, location_col, color_col, title, color_scale, value_range, animation_frame="year"):
+    """Create an animated choropleth map"""
+    map_fig = px.choropleth(
+        time_data,
+        locations=location_col,
+        color=color_col,
+        animation_frame=animation_frame,
+        hover_name="country",
+        color_continuous_scale=color_scale,
+        range_color=value_range,
+        scope="asia",
+    )
+    
+    # Define ASEAN region boundaries
+    asean_bounds = {"lat_min": -10, "lat_max": 28, "lon_min": 92, "lon_max": 141}
+    
+    map_fig.update_layout(
+        coloraxis_showscale=True,
+        coloraxis=dict(
+            colorbar=dict(
+                title=dict(
+                    text=title,
+                    font=dict(size=12),
+                    side="right",
+                ),
+                thickness=15,
+                len=0.7,
+                x=1.02,
+                y=0.5,
+                tickfont=dict(size=9),
+            )
+        ),
+        geo=dict(
+            projection_scale=1,
+            center=dict(lat=8, lon=115),
+            visible=True,
+            showland=True,
+            landcolor="lightgray",
+            showcountries=True,
+            countrycolor="gray",
+            lataxis=dict(range=[asean_bounds["lat_min"], asean_bounds["lat_max"]]),
+            lonaxis=dict(range=[asean_bounds["lon_min"], asean_bounds["lon_max"]]),
+        ),
+        sliders=[
+            dict(
+                currentvalue=dict(
+                    prefix="Year: ", visible=True, xanchor="right", font=dict(size=12)
+                ),
+                pad=dict(b=10, t=50),
+                len=0.9,
+                x=0.1,
+                y=0.02,
+            )
+        ],
+        # Add rendering fixes
+        autosize=True,
+        height=500,
+        margin=dict(l=30, r=30, t=50, b=30),
+        paper_bgcolor="white",
+    )
+    
+    # Animation settings with improved rendering
+    map_fig.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 800
+    map_fig.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 400
+    map_fig.layout.updatemenus[0].buttons[0].args[1]["transition"]["easing"] = "cubic-in-out"
+    
+    return map_fig
+
+def create_bar_chart(data, x_col, y_cols, title, color_sequence, text_auto=".2f"):
+    """Create a grouped bar chart with consistent styling"""
+    bar_fig = px.bar(
+        data,
+        x=x_col,
+        y=y_cols,
+        barmode="group",
+        labels={"value": title, "variable": "Year"},
+        color_discrete_sequence=color_sequence,
+        text_auto=text_auto,
+    )
+    
+    bar_fig.update_layout(
+        legend_title_text="Year",
+        xaxis_title="Country",
+        yaxis_title=title,
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis={"categoryorder": "total descending"},
+        # Add rendering fixes
+        autosize=True,
+        height=400,
+        margin=dict(l=30, r=30, t=30, b=50),
+        paper_bgcolor="white",
+        legend=dict(
+            font=dict(size=10),
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            bgcolor="rgba(255,255,255,0.8)"
+        )
+    )
+    
+    bar_fig.update_traces(textposition="outside")
+    
+    # Update legend labels explicitly
+    bar_fig.for_each_trace(lambda t: t.update(name=t.name.split("_")[0]))
+    
+    return bar_fig
+
+def calculate_efficiency_metrics(data):
+    """Calculate healthcare efficiency metrics"""
+    # Create comparison table with improved formatting
+    comparison_table = pd.DataFrame(
+        {
+            "Country": data["country"],
+            "Health Spending 1995 (%)": data["1995_health"].round(2),
+            "Health Spending 2010 (%)": data["2010_health"].round(2),
+            "Health Change (%)": data["health_change_pct"].round(1),
+            "IMR 1995": data["1995_mortality"].round(1),
+            "IMR 2010": data["2010_mortality"].round(1),
+            "IMR Change (%)": data["mortality_change_pct"].round(1),
+        }
+    )
+
+    # Add efficiency metrics
+    comparison_table["Efficiency Ratio 1995"] = (
+        1 / comparison_table["IMR 1995"] * 100 / comparison_table["Health Spending 1995 (%)"]
+    ).round(2)
+    
+    comparison_table["Efficiency Ratio 2010"] = (
+        1 / comparison_table["IMR 2010"] * 100 / comparison_table["Health Spending 2010 (%)"]
+    ).round(2)
+    
+    comparison_table["Efficiency Improvement (%)"] = (
+        (comparison_table["Efficiency Ratio 2010"] / comparison_table["Efficiency Ratio 1995"] - 1) * 100
+    ).round(1)
+
+    # Sort by efficiency improvement
+    comparison_table_sorted = comparison_table.sort_values(
+        "Efficiency Improvement (%)", ascending=False
+    ).reset_index(drop=True)
+    
+    return comparison_table_sorted
+
+# Basic Plotly configuration for all figures
+def add_plotly_config(fig):
+    """Add standard configuration to improve rendering"""
+    return fig.show(config={
+        'responsive': True,
+        'displayModeBar': False,
+        'showTips': True,
+        'displaylogo': False,
+        'doubleClick': 'reset',
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'asean_healthcare',
+            'height': 600,
+            'width': 800,
+            'scale': 2
+        }
+    })
+
+# Main execution code
+try:
+    # Define constants
+    ASEAN_COUNTRIES = [
+        "Cambodia", "Indonesia", "Malaysia", "Myanmar", 
+        "Philippines", "Singapore", "Thailand", "Vietnam",
+    ]
+    
+    YEAR_RANGE = range(1995, 2011)
+    
+    # File paths
+    file_paths = {
+        'health': "data\\total_health_spending_percent_of_gdp.csv",
+        'mortality': "data\\sp_dyn_imrt_in.csv"
+    }
+    
+    # Load and process data
+    health_asean, mortality_asean = load_and_filter_data(file_paths, ASEAN_COUNTRIES)
+    
+    # Extract data for 1995 and 2010 comparison
+    health_1995_2010 = health_asean[["country", "1995", "2010"]]
+    mortality_1995_2010 = mortality_asean[["country", "1995", "2010"]]
+    
+    # Merge datasets for comparison
+    merged_1995_2010 = pd.merge(
+        health_1995_2010,
+        mortality_1995_2010,
+        on="country",
+        suffixes=("_health", "_mortality"),
+    )
+    
+    # Generate time series data
+    time_series, country_iso = prepare_time_series_data(
+        health_asean, mortality_asean, ASEAN_COUNTRIES, YEAR_RANGE
+    )
+    
+    # Add ISO codes for mapping
+    merged_1995_2010["iso_alpha"] = merged_1995_2010["country"].map(country_iso)
+    
+    # Calculate statistics for 1995
+    max_health_1995 = merged_1995_2010.loc[merged_1995_2010["1995_health"].idxmax()]
+    min_health_1995 = merged_1995_2010.loc[merged_1995_2010["1995_health"].idxmin()]
+    max_mortality_1995 = merged_1995_2010.loc[merged_1995_2010["1995_mortality"].idxmax()]
+    min_mortality_1995 = merged_1995_2010.loc[merged_1995_2010["1995_mortality"].idxmin()]
+    avg_health_1995 = merged_1995_2010["1995_health"].mean()
+    avg_mortality_1995 = merged_1995_2010["1995_mortality"].mean()
+    
+    # Calculate statistics for 2010
+    max_health_2010 = merged_1995_2010.loc[merged_1995_2010["2010_health"].idxmax()]
+    min_health_2010 = merged_1995_2010.loc[merged_1995_2010["2010_health"].idxmin()]
+    max_mortality_2010 = merged_1995_2010.loc[merged_1995_2010["2010_mortality"].idxmax()]
+    min_mortality_2010 = merged_1995_2010.loc[merged_1995_2010["2010_mortality"].idxmin()]
+    avg_health_2010 = merged_1995_2010["2010_health"].mean()
+    avg_mortality_2010 = merged_1995_2010["2010_mortality"].mean()
+    
+    # Calculate changes from 1995 to 2010
+    merged_1995_2010["health_change"] = (
+        merged_1995_2010["2010_health"] - merged_1995_2010["1995_health"]
+    )
+    merged_1995_2010["health_change_pct"] = (
+        merged_1995_2010["health_change"] / merged_1995_2010["1995_health"]
+    ) * 100
+    merged_1995_2010["mortality_change"] = (
+        merged_1995_2010["2010_mortality"] - merged_1995_2010["1995_mortality"]
+    )
+    merged_1995_2010["mortality_change_pct"] = (
+        merged_1995_2010["mortality_change"] / merged_1995_2010["1995_mortality"]
+    ) * 100
+    
+    # Create choropleth maps
+    health_map_1995 = create_choropleth_map(
+        merged_1995_2010, "iso_alpha", "1995_health", 
+        "Health Spending (% of GDP) in 1995", "Blues"
+    )
+    
+    health_map_2010 = create_choropleth_map(
+        merged_1995_2010, "iso_alpha", "2010_health", 
+        "Health Spending (% of GDP) in 2010", "Blues"
+    )
+    
+    mortality_map_1995 = create_choropleth_map(
+        merged_1995_2010, "iso_alpha", "1995_mortality", 
+        "Infant Mortality Rate in 1995", "Reds"
+    )
+    
+    mortality_map_2010 = create_choropleth_map(
+        merged_1995_2010, "iso_alpha", "2010_mortality", 
+        "Infant Mortality Rate in 2010", "Reds"
+    )
+    
+    # Create animated choropleth maps
+    animated_health_map = create_animated_map(
+        time_series, "iso_alpha", "health_spending", 
+        "Health Spending (% of GDP)", "Blues", [1.5, 7]
+    )
+    
+    animated_mortality_map = create_animated_map(
+        time_series, "iso_alpha", "infant_mortality", 
+        "Infant Mortality Rate", "Reds", [0, 90]
+    )
+    
+    # Create bar charts
+    health_bar = create_bar_chart(
+        merged_1995_2010, "country", ["1995_health", "2010_health"],
+        "Health Spending (% of GDP)", ["#3182bd", "#9ecae1"]
+    )
+    
+    mortality_bar = create_bar_chart(
+        merged_1995_2010, "country", ["1995_mortality", "2010_mortality"],
+        "Infant Mortality Rate (per 1,000 live births)", ["#cb181d", "#fb6a4a"],
+        text_auto=".1f"
+    )
+    
+    # Create health change bar chart
+    health_change_bar = px.bar(
+        merged_1995_2010.sort_values("health_change_pct"),
+        x="country",
+        y="health_change_pct",
+        labels={"health_change_pct": "Change (%)", "country": "Country"},
+        color="health_change_pct",
+        color_continuous_scale="RdBu",
+        text_auto=".1f",
+    )
+    health_change_bar.update_traces(
+        texttemplate="%{y:.1f}%",
+        textposition="outside",
+        marker_line_width=1,
+        marker_line_color="rgb(50, 50, 50)",
+    )
+    health_change_bar.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis_title="Country",
+        yaxis_title="Change in Health Spending (%)",
+        coloraxis_showscale=False,
+        # Add rendering fixes
+        autosize=True,
+        height=400,
+        margin=dict(l=30, r=30, t=30, b=50),
+        paper_bgcolor="white",
+    )
+    # Add a reference line at y=0
+    health_change_bar.add_shape(
+        type="line",
+        x0=-0.5,
+        y0=0,
+        x1=len(merged_1995_2010) - 0.5,
+        y1=0,
+        line=dict(color="black", width=1, dash="dash"),
+    )
+    
+    # Create mortality change bar chart
+    mortality_change_bar = px.bar(
+        merged_1995_2010.sort_values("mortality_change_pct"),
+        x="country",
+        y="mortality_change_pct",
+        labels={"mortality_change_pct": "Change (%)", "country": "Country"},
+        color="mortality_change_pct",
+        color_continuous_scale="RdBu_r",
+        text_auto=".1f",
+    )
+    mortality_change_bar.update_traces(
+        texttemplate="%{y:.1f}%",
+        textposition="outside",
+        marker_line_width=1,
+        marker_line_color="rgb(50, 50, 50)",
+    )
+    mortality_change_bar.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis_title="Country",
+        yaxis_title="Change in Infant Mortality (%)",
+        coloraxis_showscale=False,
+        # Add rendering fixes
+        autosize=True,
+        height=400,
+        margin=dict(l=30, r=30, t=30, b=50),
+        paper_bgcolor="white",
+    )
+    # Add a reference line at y=0
+    mortality_change_bar.add_shape(
+        type="line",
+        x0=-0.5,
+        y0=0,
+        x1=len(merged_1995_2010) - 0.5,
+        y1=0,
+        line=dict(color="black", width=1, dash="dash"),
+    )
+    
+    # Create time series plots
+    health_time_series = px.line(
+        time_series,
+        x="year",
+        y="health_spending",
+        color="country",
+        labels={"health_spending": "Health Spending (% of GDP)", "year": "Year"},
+        markers=True,
+        line_shape="spline",
+    )
+    health_time_series.update_layout(
+        xaxis_title="Year",
+        yaxis_title="Health Spending (% of GDP)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend_title_text="Country",
+        hovermode="x unified",
+        # Add rendering fixes
+        autosize=True,
+        height=450,
+        margin=dict(l=30, r=30, t=30, b=50),
+        paper_bgcolor="white",
+        legend=dict(
+            font=dict(size=10),
+            yanchor="top",
+            y=0.99,
+            xanchor="right",
+            x=0.99,
+            bgcolor="rgba(255,255,255,0.8)"
+        )
+    )
+    health_time_series.update_xaxes(
+        tickmode="array",
+        tickvals=list(YEAR_RANGE),
+        ticktext=[str(year) for year in YEAR_RANGE],
+    )
+    health_time_series.update_traces(line=dict(width=2.5), marker=dict(size=6))
+    
+    mortality_time_series = px.line(
+        time_series,
+        x="year",
+        y="infant_mortality",
+        color="country",
+        labels={"infant_mortality": "Infant Mortality Rate", "year": "Year"},
+        markers=True,
+        line_shape="spline",
+    )
+    mortality_time_series.update_layout(
+        xaxis_title="Year",
+        yaxis_title="Infant Mortality Rate (per 1,000 live births)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend_title_text="Country",
+        hovermode="x unified",
+        # Add rendering fixes
+        autosize=True,
+        height=450,
+        margin=dict(l=30, r=30, t=30, b=50),
+        paper_bgcolor="white",
+        legend=dict(
+            font=dict(size=10),
+            yanchor="top",
+            y=0.99,
+            xanchor="right",
+            x=0.99,
+            bgcolor="rgba(255,255,255,0.8)"
+        )
+    )
+    mortality_time_series.update_xaxes(
+        tickmode="array",
+        tickvals=list(YEAR_RANGE),
+        ticktext=[str(year) for year in YEAR_RANGE],
+    )
+    mortality_time_series.update_traces(line=dict(width=2.5), marker=dict(size=6))
+    
+    # Create animated scatter plot
+    animated_scatter = px.scatter(
+        time_series,
+        x="health_spending",
+        y="infant_mortality",
+        animation_frame="year",
+        size=[12] * len(time_series),
+        color="country",
+        hover_name="country",
+        text="country",
+        labels={
+            "health_spending": "Health Spending (% of GDP)",
+            "infant_mortality": "Infant Mortality Rate",
+        },
+        range_x=[0, 10],
+        range_y=[0, 120],
+    )
+    
+    # Update animation settings with improved rendering
+    animated_scatter.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 800
+    animated_scatter.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 400
+    animated_scatter.layout.updatemenus[0].buttons[0].args[1]["transition"]["easing"] = "cubic-in-out"
+    
+    # Update layout with rendering fixes
+    animated_scatter.update_layout(
+        xaxis_title="Health Spending (% of GDP)",
+        yaxis_title="Infant Mortality Rate (per 1,000 live births)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend_title_text="Country",
+        height=500,
+        width=800,
+        autosize=True,
+        showlegend=False,
+        margin=dict(l=40, r=40, t=40, b=60),
+        paper_bgcolor="white",
+        sliders=[
+            dict(
+                currentvalue=dict(
+                    prefix="Year: ", visible=True, xanchor="right", font=dict(size=12)
+                ),
+                pad=dict(b=10, t=50),
+                len=0.9,
+                x=0.1,
+                y=0.02,
+            )
+        ],
+    )
+    
+    # Update traces
+    animated_scatter.update_traces(
+        textposition="top center",
+        marker=dict(line=dict(width=1, color="DarkSlateGrey")),
+        selector=dict(mode="markers+text"),
+    )
+    
+    # Add a trendline for each year frame
+    for year in time_series["year"].unique():
+        year_data = time_series[time_series["year"] == year]
+        
+        # Calculate the trend line manually (simple linear regression)
+        x = year_data["health_spending"]
+        y = year_data["infant_mortality"]
+        
+        if len(x) > 1:  # Need at least 2 points for a line
+            coeffs = np.polyfit(x, y, 1)
+            slope = coeffs[0]
+            intercept = coeffs[1]
+            
+            # Create x values for the line spanning the visible range
+            line_x = [1.5, 7.5]
+            line_y = [slope * xx + intercept for xx in line_x]
+            
+            # Add the trendline to the appropriate frame
+            frame = animated_scatter.frames[year - 1995]
+            
+            trendline = go.Scatter(
+                x=line_x,
+                y=line_y,
+                mode="lines",
+                line=dict(color="rgba(0,0,0,0.3)", width=2, dash="dash"),
+                showlegend=False,
+                name="Trend",
+            )
+            
+            # Append the trendline to the frame's data
+            frame.data = list(frame.data) + [trendline]
+    
+    # Create scatter plots for relationship analysis
+    scatter_1995 = px.scatter(
+        merged_1995_2010,
+        x="1995_health",
+        y="1995_mortality",
+        hover_name="country",
+        text="country",
+        title="Health Spending vs Infant Mortality (1995)",
+        labels={
+            "1995_health": "Health Spending (% of GDP)",
+            "1995_mortality": "Infant Mortality Rate",
+        },
+        size=[20] * len(merged_1995_2010),
+        color="country",
+        trendline="ols",
+    )
+    scatter_1995.update_traces(
+        textposition="top center",
+        marker=dict(line=dict(width=1, color="DarkSlateGrey")),
+        selector=dict(mode="markers+text"),
+    )
+    scatter_1995.update_layout(
+        xaxis_title="Health Spending (% of GDP)",
+        yaxis_title="Infant Mortality Rate (per 1,000 live births)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend_title_text="Country",
+        # Add rendering fixes
+        autosize=True,
+        height=450,
+        margin=dict(l=40, r=40, t=60, b=60),
+        paper_bgcolor="white",
+    )
+    # Update trendline color and style
+    for trace in scatter_1995.data:
+        if trace.mode == "lines":
+            trace.line.color = "rgba(0,0,0,0.3)"
+            trace.line.width = 2
+            trace.line.dash = "dash"
+            trace.showlegend = False
+    
+    scatter_2010 = px.scatter(
+        merged_1995_2010,
+        x="2010_health",
+        y="2010_mortality",
+        hover_name="country",
+        text="country",
+        title="Health Spending vs Infant Mortality (2010)",
+        labels={
+            "2010_health": "Health Spending (% of GDP)",
+            "2010_mortality": "Infant Mortality Rate",
+        },
+        size=[20] * len(merged_1995_2010),
+        color="country",
+        trendline="ols",
+    )
+    scatter_2010.update_traces(
+        textposition="top center",
+        marker=dict(line=dict(width=1, color="DarkSlateGrey")),
+        selector=dict(mode="markers+text"),
+    )
+    scatter_2010.update_layout(
+        xaxis_title="Health Spending (% of GDP)",
+        yaxis_title="Infant Mortality Rate (per 1,000 live births)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend_title_text="Country",
+        # Add rendering fixes
+        autosize=True,
+        height=450,
+        margin=dict(l=40, r=40, t=60, b=60),
+        paper_bgcolor="white",
+    )
+    # Update trendline color and style
+    for trace in scatter_2010.data:
+        if trace.mode == "lines":
+            trace.line.color = "rgba(0,0,0,0.3)"
+            trace.line.width = 2
+            trace.line.dash = "dash"
+            trace.showlegend = False
+    
+    # Calculate efficiency metrics
+    comparison_table_sorted = calculate_efficiency_metrics(merged_1995_2010)
+    
+    # Create efficiency bar chart
+    efficiency_fig = px.bar(
+        comparison_table_sorted,
+        x="Country",
+        y="Efficiency Improvement (%)",
+        text_auto=".1f",
+        color="Efficiency Improvement (%)",
+        color_continuous_scale="Viridis",
+    )
+    
+    efficiency_fig.update_traces(
+        texttemplate="%{y:.1f}%",
+        textposition="outside",
+        marker_line_width=1,
+        marker_line_color="rgb(50, 50, 50)",
+    )
+    
+    efficiency_fig.update_layout(
+        xaxis_title="Country",
+        yaxis_title="Efficiency Improvement (%)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        coloraxis_showscale=False,
+        # Add rendering fixes
+        autosize=True,
+        height=400,
+        margin=dict(l=30, r=30, t=30, b=50),
+        paper_bgcolor="white",
+    )
+    
+    # Final optimization for all plots
+    def optimize_all_figures():
+        """Apply final rendering optimizations to all figures"""
+        figures = [
+            animated_health_map, animated_mortality_map, health_time_series,
+            mortality_time_series, animated_scatter, health_bar, mortality_bar,
+            health_change_bar, mortality_change_bar, scatter_1995, scatter_2010,
+            efficiency_fig
+        ]
+        
+        for fig in figures:
+            # Ensure responsive behavior
+            if hasattr(fig, 'update_layout'):
+                fig.update_layout(
+                    responsive=True,
+                    autosize=True
+                )
+    
+    # Apply optimizations
+    optimize_all_figures()
+    
+except Exception as e:
+    print(f"Error occurred: {e}")
+```
+
+# Home
+
+## Row 1 {height=20%}
+
+::: {.valuebox icon="cash-coin" color="#4682B4" title="Health Spending in ASEAN (1995)"}
+<span style="font-size: 1.2rem;">`{python} f"{avg_health_1995:.2f}%"`
+Average % of GDP
+:::
+
+::: {.valuebox icon="cash-coin" color="#6CA6CD" title="Health Spending in ASEAN (2010)"}
+<span style="font-size: 1.2rem;">`{python} f"{avg_health_2010:.2f}%"`
+Average % of GDP
+:::
+
+::: {.valuebox icon="person-circle" color="#B22222" title="Infant Mortality in ASEAN (1995)"}
+<span style="font-size: 1.2rem;">`{python} f"{avg_mortality_1995:.1f}"`
+Per 1,000 live births
+:::
+
+::: {.valuebox icon="person-circle" color="#CD5C5C" title="Infant Mortality in ASEAN (2010)"}
+<span style="font-size: 1.2rem;">`{python} f"{avg_mortality_2010:.1f}"`
+Per 1,000 live births
+:::
+
+## Row 2 {height=60%}
+
+```{python}
+# | title: Health Spending Evolution (1995-2010)
+animated_health_map
+```
+
+```{python}
+# | title: Infant Mortality Evolution (1995-2010)
+animated_mortality_map
+```
+
+```{python}
+# | title: Relationship Between Health Spending and Infant Mortality (1995-2010)
+animated_scatter
+```
+
+## Row 3 {height=20%}
+
+### Key Observations
+The relationship between health spending and infant mortality in ASEAN countries during 1995-2010 shows several important patterns:
+
+1. **General Trend**: Countries with higher health spending tend to have lower infant mortality rates, though the relationship isn't perfectly linear.
+
+2. **Progress**: All ASEAN countries showed improvements in infant mortality rates between 1995 and 2010, regardless of changes in health spending.
+
+3. **Outliers**:
+    - Cambodia had high health spending but also high infant mortality in 1995, suggesting inefficiencies in healthcare delivery
+    - Singapore consistently maintained both high health spending and very low infant mortality
+
+4. **Diverse Approaches**: The data reveals different national strategies - some countries increased health spending significantly (Malaysia, Vietnam), while others maintained or slightly reduced spending while still improving outcomes.
+
+# Health Spending
+
+## Row 1 {height=20%}
+
+::: {.valuebox icon="arrow-up-right-circle" color="#4169E1" title="Highest Health Spending (1995)"}
+<span style="font-size: 1.2rem;">`{python} f"{max_health_1995['1995_health']:.2f}%"`
+`{python} max_health_1995['country']`
+:::
+
+::: {.valuebox icon="arrow-up-right-circle" color="#4169E1" title="Highest Health Spending (2010)"}
+<span style="font-size: 1.2rem;">`{python} f"{max_health_2010['2010_health']:.2f}%"`
+`{python} max_health_2010['country']`
+:::
+
+::: {.valuebox icon="arrow-down-right-circle" color="#4682B4" title="Lowest Health Spending (1995)"}
+<span style="font-size: 1.2rem;">`{python} f"{min_health_1995['1995_health']:.2f}%"`
+`{python} min_health_1995['country']`
+:::
+
+::: {.valuebox icon="arrow-down-right-circle" color="#4682B4" title="Lowest Health Spending (2010)"}
+<span style="font-size: 1.2rem;">`{python} f"{min_health_2010['2010_health']:.2f}%"`
+`{python} min_health_2010['country']`
+:::
+
+## Row 2 {height=40%}
+```{python}
+# | title: Health Spending (% of GDP) Over Time (1995-2010)
+health_time_series
+```
+
+## Row 3 {height=40%}
+```{python}
+# | title: Health Spending (%GDP) 1995 vs 2010
+health_bar
+```
+```{python}
+# | title: Percent change in Health Spending (%GDP) in ASEAN Countries (1995-2010)
+health_change_bar
+```
+
+# Infant Mortality
+
+## Row 1 {height=20%}
+
+::: {.valuebox icon="graph-up-arrow" color="#B22222" title="Highest Mortality (1995)"}
+<span style="font-size: 1.2rem;">`{python} f"{max_mortality_1995['1995_mortality']:.1f}"`
+`{python} max_mortality_1995['country']`
+:::
+
+::: {.valuebox icon="graph-up-arrow" color="#B22222" title="Highest Mortality (2010)"}
+<span style="font-size: 1.2rem;">`{python} f"{max_mortality_2010['2010_mortality']:.1f}"`
+`{python} max_mortality_2010['country']`
+:::
+
+::: {.valuebox icon="graph-down-arrow" color="#CD5C5C" title="Lowest Mortality (1995)"}
+<span style="font-size: 1.2rem;">`{python} f"{min_mortality_1995['1995_mortality']:.1f}"`
+`{python} min_mortality_1995['country']`
+:::
+
+::: {.valuebox icon="graph-down-arrow" color="#CD5C5C" title="Lowest Mortality (2010)"}
+<span style="font-size: 1.2rem;">`{python} f"{min_mortality_2010['2010_mortality']:.1f}"`
+`{python} min_mortality_2010['country']`
+:::
+
+## Row 2 {height=40%}
+
+```{python}
+# | title: Infant Mortality Over Time (1995-2010)
+mortality_time_series
+```
+
+## Row 3 {height=40%}
+
+```{python}
+# | title: Infant Mortality 1995 vs 2010
+mortality_bar
+```
+```{python}
+# | title: Percent change in Infant Mortality in ASEAN Countries (1995-2010)
+mortality_change_bar
+```
+
+# Efficiency
+
+## Row 1 {height=40%}
+```{python}
+# | title: Healthcare Efficiency Analysis in ASEAN Countries (1995-2010)
+efficiency_fig
+```
+
+## Row 2 {height=35%}
+
+```{python}
+# | title: Healthcare Indicators Comparison
+comparison_table_sorted.style.format(precision=2).hide(axis='index')
+```
+
+## Row 3 {height=25%}
+
+### Key Insights
+
+The relationship between health spending and infant mortality in ASEAN countries reveals important insights about healthcare efficiency and outcomes:
+
+1. **Initial Observations (1995)**:
+   - Higher health spending did not always correlate with lower infant mortality
+   - Cambodia had the highest health spending as % of GDP, but also one of the highest infant mortality rates
+   - Singapore had moderate health spending with the lowest infant mortality
+   - This suggests differences in healthcare system efficiency and resource allocation
+
+2. **Changes Over Time (1995-2010)**:
+   - All countries improved infant mortality rates regardless of spending changes
+   - Malaysia increased health spending substantially (51%) and reduced infant mortality by 40%
+   - Cambodia reduced health spending but achieved the greatest reduction in infant mortality (57%)
+   - This highlights the importance of effective healthcare interventions and policy over mere spending levels
+
+3. **Efficiency Analysis**:
+   - The efficiency metric (calculated as the inverse of infant mortality divided by health spending) shows dramatic improvements across the region
+   - Cambodia achieved the highest efficiency improvement despite reducing spending
+   - This suggests significant improvements in healthcare delivery systems, disease prevention programs, and maternal/child health interventions
+   - The data indicates that both the amount of healthcare spending and how effectively resources are utilized matter greatly
+
+4. **Regional Convergence**:
+   - The gap between highest and lowest infant mortality rates narrowed significantly
+   - In 1995: highest (Cambodia: 86.6) vs lowest (Singapore: 4.0) - a difference of 82.6
+   - In 2010: highest (Myanmar: 48.5) vs lowest (Singapore: 2.2) - a difference of 46.3
+   - Indicates overall regional progress toward better healthcare outcomes
+
+# Data
+
+## Row 1 {height=66%}
+
+### ASEAN Health and Mortality Data (1995-2010)
+```{python}
+# Display the full dataset with download button (if using Quarto)
+(time_series[['country', 'year', 'health_spending', 'infant_mortality']]
+    .rename(columns={
+        'country': 'Country',
+        'year': 'Year',
+        'health_spending': 'Health Spending (% GDP)',
+        'infant_mortality': 'Infant Mortality (per 1000 Live Birth)'
+    })
+    .sort_values(by=['Country', 'Year'])
+    .style.hide(axis='index')
+    .format(precision=2)
+    .set_properties(**{'text-align': 'left'}, subset=['Year', 'Health Spending (% GDP)', 'Infant Mortality (per 1000 Live Birth)']))
+
+```
+
+## Row 2 {height=34%}
+
+### About This Dashboard
+
+![](gapminder.png) Learn more about the Gapminder dataset at <https://www.gapminder.org/data/documentation/>
+
+This dashboard presents an analysis of healthcare indicators across ASEAN countries from 1995 to 2010, focusing on two key metrics:
+
+1. **Total Health Spending (% of GDP)**: This indicator measures the proportion of a country's GDP allocated to healthcare, reflecting national priorities and investment in health systems.
+
+2. **Infant Mortality Rate (per 1,000 live births)**: A critical indicator of population health and healthcare quality, representing the number of deaths of infants under one year old per 1,000 live births.
+
+The data is sourced from Gapminder's global development indicators database, which compiles information from various international organizations including WHO, World Bank, and UN agencies.
+
+This analysis covers 8 of the 10 ASEAN countries (Brunei Darussalam and Lao PDR were not included due to data limitations) and examines both the absolute values and the changes over the 15-year period.
+
+The dashboard is designed to **highlight**:
+    - Regional trends in health spending and outcomes
+    - ASEAN Countries-specific progress and challenges
+    - The relationship between financial investment and health outcomes
+    - Patterns of healthcare development across Southeast Asia

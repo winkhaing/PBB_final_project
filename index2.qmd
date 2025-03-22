@@ -9,7 +9,6 @@ execute:
     echo: false
 ---
 
-
 ```{python}
 # | eval: true
 # | output: false
