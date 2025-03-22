@@ -854,6 +854,8 @@ comparison_table_sorted.style.format(precision=2).hide(axis='index')
 
 ### Key Insights
 
+**Efficiency** was calculated as the inverse of infant mortality rate divided by health spending percentage, measuring the health outcome achieved per unit of spending.
+
 The relationship between health spending and infant mortality in ASEAN countries reveals important insights about healthcare efficiency and outcomes:
 
 1. **Initial Observations (1995)**:
